@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToonVector - مستخلص خطوط الكوميكس والرسوم الخطية إلى فيكتور (mkbitmap + Potrace WASM)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 2L2 22h20L12 2zm0 4.5l6.5 13H5.5L12 6.5z'/></svg>">
+</head>
+<body>
+
+  <header>
+    <div class="logo-section">
+      <div class="logo-badge">⚡ ToonVector</div>
+      <div class="logo-title">
+        <h1>مستخلص خطوط الكوميكس والرسوم الكرتونية إلى متجهات (Vector)</h1>
+        <p>محرك WebAssembly رسمي مع خوارزميات mkbitmap لاستخلاص خطوط الحبر بدقة متناهية</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <div class="badge" id="engineBadge">
+        <span class="badge-dot"></span>
+        <span>WebAssembly (WASM) ⚡ جاهز</span>
+      </div>
+      <a href="https://github.com" target="_blank" class="badge gh-link" title="جاهز للرفع على GitHub Pages">
+        <span>🌐 جاهز للنشر أونلاين</span>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Controls Panel -->
+    <aside class="controls-panel">
+
+      <!-- Gallery of Built-in Comic & Line Art Examples -->
+      <section class="panel-section">
+        <div class="section-title">
+          <span>📚 مكتبة الأمثلة الجاهزة (اضغط للتجربة الفورية)</span>
+        </div>
+        <div class="gallery-grid">
+          <div class="gallery-card active" data-sample="comic_video" id="cardComic">
+            <img src="samples/comic_video.png" alt="كوميكس الفيديو">
+            <div class="card-info">
+              <span class="card-title">لوحة كوميكس ملونة</span>
+              <span class="card-tag">نفس مثال الفيديو (-f 2 -s 2)</span>
+            </div>
+          </div>
+          <div class="gallery-card" data-sample="manga_character" id="cardManga">
+            <img src="samples/manga_character.png" alt="شخصية مانغا">
+            <div class="card-info">
+              <span class="card-title">شخصية أنمي ومانغا</span>
+              <span class="card-tag">حبر ياباني دقيق</span>
+            </div>
+          </div>
+          <div class="gallery-card" data-sample="botanical_sketch" id="cardSketch">
+            <img src="samples/botanical_sketch.png" alt="رسم خطي دقيق">
+            <div class="card-info">
+              <span class="card-title">رسم خطي ومعماري</span>
+              <span class="card-tag">تفاصيل دقيقة</span>
+            </div>
+          </div>
+          <div class="gallery-card" data-sample="scanned_signature" id="cardSignature">
+            <img src="samples/scanned_signature.png" alt="توقيع على ورق به ظلال">
+            <div class="card-info">
+              <span class="card-title">مخطوطة وتوقيع</span>
+              <span class="card-tag">عزل ورق به ظلال</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Custom Upload Section -->
+      <section class="panel-section">
+        <div class="section-title">📁 أو ارفع رسمتك الخاصة</div>
+        <div class="upload-zone" id="dropZone">
+          <div class="upload-icon">📥</div>
+          <div class="upload-text">اسحب رسمة كرتونية أو خطية هنا</div>
+          <div class="upload-hint">يدعم JPG, PNG, WebP (يُفضل رسومات ذات خطوط حبر واضحة)</div>
+          <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+      </section>
+
+      <!-- Fast Presets Bar -->
+      <section class="panel-section">
+        <div class="section-title">⚡ الإعدادات السريعة الموصى بها</div>
+        <div class="presets-container">
+          <button class="preset-btn active" id="presetVideo">
+            <span class="preset-name">🎯 كوميكس الشريحة</span>
+            <span class="preset-desc">-f 2 | -s 2 | -t 0.48</span>
+          </button>
+          <button class="preset-btn" id="presetManga">
+            <span class="preset-name">🍙 مانغا وأنمي</span>
+            <span class="preset-desc">-f 3 | -s 2 | -t 0.44</span>
+          </button>
+          <button class="preset-btn" id="presetHandwriting">
+            <span class="preset-name">🖋️ توقيع وحبر يدوي</span>
+            <span class="preset-desc">-f 4 | -s 2 | -t 0.48</span>
+          </button>
+          <button class="preset-btn" id="presetFineLine">
+            <span class="preset-name">📐 خطوط دقيقة</span>
+            <span class="preset-desc">-f 2 | -s 3 | -t 0.50</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Vector Mode Selection -->
+      <section class="panel-section">
+        <div class="section-title">🎨 وضع المتجهات</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="btnModeMono">
+            <span>✒️ خطوط الحبر (عزل ونقاء تام)</span>
+          </button>
+          <button class="mode-btn" id="btnModeColor">
+            <span>🌈 فيكتور ملون كامل</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- mkbitmap Fine Controls -->
+      <section class="panel-section" id="secMkbitmap">
+        <div class="section-title">⚙️ معايير خوارزمية mkbitmap الدقيقة</div>
+
+        <!-- Highpass Filter (-f) -->
+        <div class="control-group" id="grpFilter">
+          <div class="control-label">
+            <span>فلتر التردد العالي (Highpass -f):</span>
+            <span class="control-val" id="valFilter">2</span>
+          </div>
+          <input type="range" id="rngFilter" min="0" max="15" step="1" value="2">
+          <span class="control-help">القيمة 2 هي المستخدمة في فيديو جوجل؛ تعزل خطوط الحبر الرفيعة وتهمل الخلفيات الملونة.</span>
+        </div>
+
+        <!-- Scaling (-s) -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>التكبير التنعيمي (Scaling -s):</span>
+            <span class="control-val" id="valScale">2x</span>
+          </div>
+          <input type="range" id="rngScale" min="1" max="4" step="1" value="2">
+          <span class="control-help">يضاعف دقة الصورة قبل التحويل، مما يجعل المنحنيات فائقة النعومة ويقضي على التسننات.</span>
+        </div>
+
+        <!-- Threshold (-t) -->
+        <div class="control-group" id="grpThreshold">
+          <div class="control-label">
+            <span>عتبة التباين (Threshold -t):</span>
+            <span class="control-val" id="valThreshold">0.48</span>
+          </div>
+          <input type="range" id="rngThreshold" min="0.10" max="0.90" step="0.01" value="0.48">
+          <span class="control-help">التحكم في كثافة خطوط الحبر المتبقية (0.48 هي القيمة الذهبية للكوميكس).</span>
+        </div>
+
+        <!-- Color levels in color mode -->
+        <div class="control-group" id="grpColorLevels" style="display: none;">
+          <div class="control-label">
+            <span>عدد طبقات الألوان (Color Layers):</span>
+            <span class="control-val" id="valColorLevels">5</span>
+          </div>
+          <input type="range" id="rngColorLevels" min="2" max="16" step="1" value="5">
+        </div>
+
+        <!-- Invert Checkbox -->
+        <div class="control-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkInvert">
+            <span>عكس الألوان (لرسومات الطباشير والخطوط البيضاء على خلفية سوداء)</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Potrace Tuning -->
+      <section class="panel-section">
+        <div class="section-title">📐 تنقية منحنيات Potrace</div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>تنظيف الشوائب الصغيرة (Turdsize):</span>
+            <span class="control-val" id="valTurd">2</span>
+          </div>
+          <input type="range" id="rngTurd" min="0" max="40" step="1" value="2">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>تنعيم الزوايا والمنحنيات (Alphamax):</span>
+            <span class="control-val" id="valAlpha">1.0</span>
+          </div>
+          <input type="range" id="rngAlpha" min="0.0" max="1.33" step="0.05" value="1.0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>تحسين المنحنيات (Optolerance):</span>
+            <span class="control-val" id="valOpt">0.20</span>
+          </div>
+          <input type="range" id="rngOpt" min="0.05" max="0.8" step="0.05" value="0.20">
+        </div>
+      </section>
+
+      <!-- Convert Button -->
+      <button class="btn-convert" id="btnTrace">
+        <span>⚡ إعادة توليد الفيكتور (Vectorize)</span>
+      </button>
+
+      <label class="checkbox-label" style="justify-content: center;">
+        <input type="checkbox" id="chkAuto" checked>
+        <span>تحديث تلقائي فوري عند تحريك المؤشرات</span>
+      </label>
+
+    </aside>
+
+    <!-- Right Workspace Area -->
+    <div class="workspace-panel">
+
+      <div class="workspace-header">
+        <div class="view-tabs">
+          <button class="tab-btn active" data-view="svg">متجه SVG النهائي</button>
+          <button class="tab-btn" data-view="split">مقارنة متزامنة (جنباً إلى جنب)</button>
+          <button class="tab-btn" data-view="preprocessed">معاينة معالجة mkbitmap</button>
+          <button class="tab-btn" data-view="original">الرسمة الأصلية</button>
+        </div>
+
+        <div class="workspace-actions">
+          <button class="action-btn" id="btnCopySvg">📋 نسخ كود SVG</button>
+          <button class="action-btn" id="btnDownloadBmp">🖼️ تحميل Bitmap</button>
+          <button class="action-btn primary" id="btnDownloadSvg">⬇️ تحميل ملف SVG</button>
+        </div>
+      </div>
+
+      <!-- Viewport Display -->
+      <div class="viewport-container" id="viewport">
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner"></div>
+          <p id="loadingText" style="font-size: 0.9rem; font-weight: 600;">جاري استخلاص خطوط الحبر وتوليد المنحنيات الرياضية...</p>
+        </div>
+
+        <div class="viewport-content" id="viewportContent"></div>
+      </div>
+
+      <!-- Quality Explanation Banner -->
+      <div class="quality-banner">
+        <span class="banner-icon">💡</span>
+        <div class="banner-text">
+          <strong>كيف تم تحقيق هذه النتيجة؟</strong>
+          يقوم فلتر <code class="tag">-f 2</code> بطرح ألوان الخلفية والمساحات اللونية الواسعة والإبقاء فقط على خطوط الحبر الدقيقة، بينما يُضاعف <code class="tag">-s 2</code> دقة الصورة قبل استخراج المنحنيات لتحصل على أقصى نعومة ممكنة.
+        </div>
+      </div>
+
+      <!-- Statistics Bar -->
+      <div class="stats-bar">
+        <div class="stat-item">الأبعاد: <span class="stat-val" id="statDim">-</span></div>
+        <div class="stat-item">حجم ملف SVG: <span class="stat-val" id="statSize">-</span></div>
+        <div class="stat-item">عدد المسارات (Paths): <span class="stat-val" id="statPaths">-</span></div>
+        <div class="stat-item">زمن المعالجة الفوري: <span class="stat-val" id="statTime">-</span></div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="toast" id="toast">تم النسخ بنجاح!</div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
