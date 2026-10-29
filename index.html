@@ -1,263 +1,440 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ToonVector - مستخلص خطوط الكوميكس والرسوم الخطية إلى فيكتور (mkbitmap + Potrace WASM)</title>
+  <title>VectorStudio - تحويل خطوط الكوميكس والرسومات إلى فيكتور</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: 'hsl(var(--border))',
+            input: 'hsl(var(--input))',
+            ring: 'hsl(var(--ring))',
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            primary: {
+              DEFAULT: 'hsl(var(--primary))',
+              foreground: 'hsl(var(--primary-foreground))',
+            },
+            secondary: {
+              DEFAULT: 'hsl(var(--secondary))',
+              foreground: 'hsl(var(--secondary-foreground))',
+            },
+            muted: {
+              DEFAULT: 'hsl(var(--muted))',
+              foreground: 'hsl(var(--muted-foreground))',
+            },
+            accent: {
+              DEFAULT: 'hsl(var(--accent))',
+              foreground: 'hsl(var(--accent-foreground))',
+            },
+            card: {
+              DEFAULT: 'hsl(var(--card))',
+              foreground: 'hsl(var(--card-foreground))',
+            },
+          },
+          borderRadius: {
+            lg: 'var(--radius)',
+            md: 'calc(var(--radius) - 2px)',
+            sm: 'calc(var(--radius) - 4px)',
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Theme init script (prevents flash) -->
+  <script>
+    if (localStorage.theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M12 2L2 22h20L12 2zm0 4.5l6.5 13H5.5L12 6.5z'/></svg>">
 </head>
-<body>
+<body class="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-foreground selection:text-background">
 
-  <header>
-    <div class="logo-section">
-      <div class="logo-badge">⚡ ToonVector</div>
-      <div class="logo-title">
-        <h1>مستخلص خطوط الكوميكس والرسوم الكرتونية إلى متجهات (Vector)</h1>
-        <p>محرك WebAssembly رسمي مع خوارزميات mkbitmap لاستخلاص خطوط الحبر بدقة متناهية</p>
+  <!-- Minimalist SaaS Navbar (Linear / Vercel style) -->
+  <header class="sticky top-0 z-40 w-full border-b border-border/80 bg-background/80 backdrop-blur-md">
+    <div class="max-w-[1780px] mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
+      
+      <!-- Brand & Badges -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center font-bold shadow-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-tight">VectorStudio</span>
+          <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border border-border bg-secondary text-muted-foreground">
+            WASM v1.2
+          </span>
+        </div>
       </div>
-    </div>
-    <div class="header-badges">
-      <div class="badge" id="engineBadge">
-        <span class="badge-dot"></span>
-        <span>WebAssembly (WASM) ⚡ جاهز</span>
+
+      <!-- Right Header Actions -->
+      <div class="flex items-center gap-2.5">
+        <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full border border-border bg-secondary/50 text-xs text-muted-foreground font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>WebAssembly Active</span>
+        </div>
+
+        <!-- Dark/Light Mode Toggle -->
+        <button id="btnThemeToggle" aria-label="Toggle Theme" class="w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center text-foreground hover:bg-accent transition-colors">
+          <!-- Sun icon (for dark mode) -->
+          <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+          </svg>
+          <!-- Moon icon (for light mode) -->
+          <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+        </button>
+
+        <!-- GitHub Repository Link -->
+        <a href="https://github.com/Gamingmonster2/VectorStudio" target="_blank" rel="noopener" class="h-9 px-3 rounded-lg border border-border bg-card hover:bg-accent text-foreground text-xs font-medium flex items-center gap-2 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span class="hidden sm:inline">GitHub</span>
+        </a>
+
       </div>
-      <a href="https://github.com" target="_blank" class="badge gh-link" title="جاهز للرفع على GitHub Pages">
-        <span>🌐 جاهز للنشر أونلاين</span>
-      </a>
     </div>
   </header>
 
-  <main>
-    <!-- Left Controls Panel -->
-    <aside class="controls-panel">
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-[1780px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-[410px_1fr] gap-6">
 
-      <!-- Gallery of Built-in Comic & Line Art Examples -->
-      <section class="panel-section">
-        <div class="section-title">
-          <span>📚 مكتبة الأمثلة الجاهزة (اضغط للتجربة الفورية)</span>
+    <!-- Left Settings Sidebar (shadcn card / Linear layout) -->
+    <aside class="space-y-5 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto pr-0 lg:pr-1">
+
+      <!-- Section: Built-in Gallery -->
+      <div class="border border-border rounded-xl bg-card p-4 space-y-3 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">الأمثلة الجاهزة (نقرة واحدة)</span>
+          <span class="text-[11px] font-mono text-muted-foreground">4 نماذج</span>
         </div>
-        <div class="gallery-grid">
-          <div class="gallery-card active" data-sample="comic_video" id="cardComic">
-            <img src="samples/comic_video.png" alt="كوميكس الفيديو">
-            <div class="card-info">
-              <span class="card-title">لوحة كوميكس ملونة</span>
-              <span class="card-tag">نفس مثال الفيديو (-f 2 -s 2)</span>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <!-- Card 1: Video Comic -->
+          <div class="gallery-card group relative border border-border/80 hover:border-foreground/40 rounded-lg p-2 cursor-pointer transition-all bg-secondary/30 hover:bg-secondary/60 active" data-sample="comic_video" id="cardComic">
+            <div class="aspect-[16/10] w-full rounded overflow-hidden bg-background mb-1.5 border border-border/40">
+              <img src="samples/comic_video.png" alt="لوحة الكوميكس" class="w-full h-full object-cover">
             </div>
+            <div class="text-xs font-medium truncate text-foreground">كوميكس الشريحة</div>
+            <div class="text-[10px] font-mono text-muted-foreground">-f 2 | -s 2 | -t 0.48</div>
           </div>
-          <div class="gallery-card" data-sample="manga_character" id="cardManga">
-            <img src="samples/manga_character.png" alt="شخصية مانغا">
-            <div class="card-info">
-              <span class="card-title">شخصية أنمي ومانغا</span>
-              <span class="card-tag">حبر ياباني دقيق</span>
+
+          <!-- Card 2: Manga Character -->
+          <div class="gallery-card group relative border border-border/80 hover:border-foreground/40 rounded-lg p-2 cursor-pointer transition-all bg-secondary/30 hover:bg-secondary/60" data-sample="manga_character" id="cardManga">
+            <div class="aspect-[16/10] w-full rounded overflow-hidden bg-background mb-1.5 border border-border/40">
+              <img src="samples/manga_character.png" alt="شخصية مانغا" class="w-full h-full object-cover">
             </div>
+            <div class="text-xs font-medium truncate text-foreground">مانغا وأنمي</div>
+            <div class="text-[10px] font-mono text-muted-foreground">حبر ياباني نقي</div>
           </div>
-          <div class="gallery-card" data-sample="botanical_sketch" id="cardSketch">
-            <img src="samples/botanical_sketch.png" alt="رسم خطي دقيق">
-            <div class="card-info">
-              <span class="card-title">رسم خطي ومعماري</span>
-              <span class="card-tag">تفاصيل دقيقة</span>
+
+          <!-- Card 3: Line Art -->
+          <div class="gallery-card group relative border border-border/80 hover:border-foreground/40 rounded-lg p-2 cursor-pointer transition-all bg-secondary/30 hover:bg-secondary/60" data-sample="botanical_sketch" id="cardSketch">
+            <div class="aspect-[16/10] w-full rounded overflow-hidden bg-background mb-1.5 border border-border/40">
+              <img src="samples/botanical_sketch.png" alt="رسم خطي" class="w-full h-full object-cover">
             </div>
+            <div class="text-xs font-medium truncate text-foreground">رسم خطي دقيق</div>
+            <div class="text-[10px] font-mono text-muted-foreground">خطوط وتفاصيل</div>
           </div>
-          <div class="gallery-card" data-sample="scanned_signature" id="cardSignature">
-            <img src="samples/scanned_signature.png" alt="توقيع على ورق به ظلال">
-            <div class="card-info">
-              <span class="card-title">مخطوطة وتوقيع</span>
-              <span class="card-tag">عزل ورق به ظلال</span>
+
+          <!-- Card 4: Inked Signature -->
+          <div class="gallery-card group relative border border-border/80 hover:border-foreground/40 rounded-lg p-2 cursor-pointer transition-all bg-secondary/30 hover:bg-secondary/60" data-sample="scanned_signature" id="cardSignature">
+            <div class="aspect-[16/10] w-full rounded overflow-hidden bg-background mb-1.5 border border-border/40">
+              <img src="samples/scanned_signature.png" alt="مخطوطة وتوقيع" class="w-full h-full object-cover">
             </div>
+            <div class="text-xs font-medium truncate text-foreground">مخطوطة وتوقيع</div>
+            <div class="text-[10px] font-mono text-muted-foreground">عزل ظلال الورق</div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Custom Upload Section -->
-      <section class="panel-section">
-        <div class="section-title">📁 أو ارفع رسمتك الخاصة</div>
-        <div class="upload-zone" id="dropZone">
-          <div class="upload-icon">📥</div>
-          <div class="upload-text">اسحب رسمة كرتونية أو خطية هنا</div>
-          <div class="upload-hint">يدعم JPG, PNG, WebP (يُفضل رسومات ذات خطوط حبر واضحة)</div>
-          <input type="file" id="fileInput" accept="image/*" style="display: none;">
+      <!-- Section: Drag & Drop Upload Zone -->
+      <div id="dropZone" class="group border border-dashed border-border hover:border-foreground/40 rounded-xl p-5 text-center cursor-pointer transition-all bg-card hover:bg-accent/30 space-y-2">
+        <div class="w-10 h-10 rounded-full border border-border bg-secondary flex items-center justify-center mx-auto text-muted-foreground group-hover:text-foreground transition-colors">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
         </div>
-      </section>
+        <div class="text-xs font-medium text-foreground">اسحب وأفلت رسمتك هنا، أو اضغط للاختيار</div>
+        <div class="text-[11px] text-muted-foreground">يدعم PNG, JPG, WebP (يُفضل خطوط حبر واضحة)</div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden">
+      </div>
 
-      <!-- Fast Presets Bar -->
-      <section class="panel-section">
-        <div class="section-title">⚡ الإعدادات السريعة الموصى بها</div>
-        <div class="presets-container">
-          <button class="preset-btn active" id="presetVideo">
-            <span class="preset-name">🎯 كوميكس الشريحة</span>
-            <span class="preset-desc">-f 2 | -s 2 | -t 0.48</span>
+      <!-- Section: Quick Presets (Linear Badge style) -->
+      <div class="space-y-2">
+        <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">الإعدادات السريعة الموصى بها</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="presetVideo" class="preset-btn active border border-border rounded-lg p-2.5 text-right transition-all bg-card hover:bg-accent">
+            <div class="text-xs font-semibold">🎯 كوميكس الشريحة</div>
+            <div class="text-[10px] font-mono text-muted-foreground mt-0.5">-f 2 | -s 2 | -t 0.48</div>
           </button>
-          <button class="preset-btn" id="presetManga">
-            <span class="preset-name">🍙 مانغا وأنمي</span>
-            <span class="preset-desc">-f 3 | -s 2 | -t 0.44</span>
+          <button id="presetManga" class="preset-btn border border-border rounded-lg p-2.5 text-right transition-all bg-card hover:bg-accent">
+            <div class="text-xs font-semibold">🍙 مانغا وأنمي</div>
+            <div class="text-[10px] font-mono text-muted-foreground mt-0.5">-f 3 | -s 2 | -t 0.44</div>
           </button>
-          <button class="preset-btn" id="presetHandwriting">
-            <span class="preset-name">🖋️ توقيع وحبر يدوي</span>
-            <span class="preset-desc">-f 4 | -s 2 | -t 0.48</span>
+          <button id="presetHandwriting" class="preset-btn border border-border rounded-lg p-2.5 text-right transition-all bg-card hover:bg-accent">
+            <div class="text-xs font-semibold">🖋️ توقيع وحبر يدوي</div>
+            <div class="text-[10px] font-mono text-muted-foreground mt-0.5">-f 4 | -s 2 | -t 0.48</div>
           </button>
-          <button class="preset-btn" id="presetFineLine">
-            <span class="preset-name">📐 خطوط دقيقة</span>
-            <span class="preset-desc">-f 2 | -s 3 | -t 0.50</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Vector Mode Selection -->
-      <section class="panel-section">
-        <div class="section-title">🎨 وضع المتجهات</div>
-        <div class="mode-toggle">
-          <button class="mode-btn active" id="btnModeMono">
-            <span>✒️ خطوط الحبر (عزل ونقاء تام)</span>
-          </button>
-          <button class="mode-btn" id="btnModeColor">
-            <span>🌈 فيكتور ملون كامل</span>
+          <button id="presetFineLine" class="preset-btn border border-border rounded-lg p-2.5 text-right transition-all bg-card hover:bg-accent">
+            <div class="text-xs font-semibold">📐 خطوط دقيقة</div>
+            <div class="text-[10px] font-mono text-muted-foreground mt-0.5">-f 2 | -s 3 | -t 0.50</div>
           </button>
         </div>
-      </section>
+      </div>
 
-      <!-- mkbitmap Fine Controls -->
-      <section class="panel-section" id="secMkbitmap">
-        <div class="section-title">⚙️ معايير خوارزمية mkbitmap الدقيقة</div>
+      <!-- Section: Vector Mode (Segmented Tabs control) -->
+      <div class="space-y-2">
+        <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">وضع المتجهات</div>
+        <div class="bg-secondary p-1 rounded-lg grid grid-cols-2 gap-1 border border-border/50 text-xs font-medium">
+          <button id="btnModeMono" class="py-1.5 px-3 rounded-md transition-all active bg-background text-foreground shadow-sm">
+            ✒️ خطوط الحبر (عزل نقي)
+          </button>
+          <button id="btnModeColor" class="py-1.5 px-3 rounded-md transition-all text-muted-foreground hover:text-foreground">
+            🌈 فيكتور ملون كامل
+          </button>
+        </div>
+      </div>
+
+      <!-- Section: mkbitmap Preprocessing Card -->
+      <div class="border border-border rounded-xl bg-card p-4 space-y-4 shadow-sm" id="secMkbitmap">
+        <div class="flex items-center justify-between border-b border-border pb-2.5">
+          <span class="text-xs font-semibold text-foreground flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+            </svg>
+            معايير mkbitmap الرسمية
+          </span>
+          <span class="text-[10px] font-mono text-muted-foreground">Highpass IIR</span>
+        </div>
 
         <!-- Highpass Filter (-f) -->
-        <div class="control-group" id="grpFilter">
-          <div class="control-label">
-            <span>فلتر التردد العالي (Highpass -f):</span>
-            <span class="control-val" id="valFilter">2</span>
+        <div class="space-y-1.5" id="grpFilter">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">فلتر التردد العالي (-f):</span>
+            <span id="valFilter" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">2</span>
           </div>
           <input type="range" id="rngFilter" min="0" max="15" step="1" value="2">
-          <span class="control-help">القيمة 2 هي المستخدمة في فيديو جوجل؛ تعزل خطوط الحبر الرفيعة وتهمل الخلفيات الملونة.</span>
+          <p class="text-[11px] text-muted-foreground leading-relaxed">القيمة 2 هي المستخدمة في فيديو جوجل؛ تعزل خطوط الحبر الرفيعة وتهمل الخلفيات الملونة.</p>
         </div>
 
-        <!-- Scaling (-s) -->
-        <div class="control-group">
-          <div class="control-label">
-            <span>التكبير التنعيمي (Scaling -s):</span>
-            <span class="control-val" id="valScale">2x</span>
+        <!-- Scale (-s) -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">التكبير التنعيمي (-s):</span>
+            <span id="valScale" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">2x</span>
           </div>
           <input type="range" id="rngScale" min="1" max="4" step="1" value="2">
-          <span class="control-help">يضاعف دقة الصورة قبل التحويل، مما يجعل المنحنيات فائقة النعومة ويقضي على التسننات.</span>
+          <p class="text-[11px] text-muted-foreground leading-relaxed">يضاعف دقة الرسمة بالاستيفاء قبل التحويل للقضاء على التسنن (Anti-aliasing).</p>
         </div>
 
         <!-- Threshold (-t) -->
-        <div class="control-group" id="grpThreshold">
-          <div class="control-label">
-            <span>عتبة التباين (Threshold -t):</span>
-            <span class="control-val" id="valThreshold">0.48</span>
+        <div class="space-y-1.5" id="grpThreshold">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">عتبة التباين (-t):</span>
+            <span id="valThreshold" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">0.48</span>
           </div>
           <input type="range" id="rngThreshold" min="0.10" max="0.90" step="0.01" value="0.48">
-          <span class="control-help">التحكم في كثافة خطوط الحبر المتبقية (0.48 هي القيمة الذهبية للكوميكس).</span>
+          <p class="text-[11px] text-muted-foreground leading-relaxed">تحديد كثافة خطوط الحبر المتبقية (0.48 هي القيمة الذهبية للكوميكس).</p>
         </div>
 
         <!-- Color levels in color mode -->
-        <div class="control-group" id="grpColorLevels" style="display: none;">
-          <div class="control-label">
-            <span>عدد طبقات الألوان (Color Layers):</span>
-            <span class="control-val" id="valColorLevels">5</span>
+        <div class="space-y-1.5" id="grpColorLevels" style="display: none;">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">عدد طبقات الألوان (Posterize):</span>
+            <span id="valColorLevels" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">5</span>
           </div>
           <input type="range" id="rngColorLevels" min="2" max="16" step="1" value="5">
         </div>
 
         <!-- Invert Checkbox -->
-        <div class="control-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="chkInvert">
-            <span>عكس الألوان (لرسومات الطباشير والخطوط البيضاء على خلفية سوداء)</span>
+        <div class="pt-1">
+          <label class="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
+            <input type="checkbox" id="chkInvert" class="rounded border-border accent-foreground w-4 h-4">
+            <span>عكس الألوان (لرسومات الطباشير على خلفيات داكنة)</span>
           </label>
         </div>
-      </section>
+      </div>
 
-      <!-- Potrace Tuning -->
-      <section class="panel-section">
-        <div class="section-title">📐 تنقية منحنيات Potrace</div>
+      <!-- Section: Potrace Parameters Card -->
+      <div class="border border-border rounded-xl bg-card p-4 space-y-4 shadow-sm">
+        <div class="flex items-center justify-between border-b border-border pb-2.5">
+          <span class="text-xs font-semibold text-foreground flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            تنقية منحنيات Potrace
+          </span>
+          <span class="text-[10px] font-mono text-muted-foreground">Vector Bézier</span>
+        </div>
 
-        <div class="control-group">
-          <div class="control-label">
-            <span>تنظيف الشوائب الصغيرة (Turdsize):</span>
-            <span class="control-val" id="valTurd">2</span>
+        <!-- Turdsize -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">تنظيف الشوائب الصغيرة (Turdsize):</span>
+            <span id="valTurd" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">2</span>
           </div>
           <input type="range" id="rngTurd" min="0" max="40" step="1" value="2">
         </div>
 
-        <div class="control-group">
-          <div class="control-label">
-            <span>تنعيم الزوايا والمنحنيات (Alphamax):</span>
-            <span class="control-val" id="valAlpha">1.0</span>
+        <!-- Alphamax -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">تنعيم المنحنيات (Alphamax):</span>
+            <span id="valAlpha" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">1.0</span>
           </div>
           <input type="range" id="rngAlpha" min="0.0" max="1.33" step="0.05" value="1.0">
         </div>
 
-        <div class="control-group">
-          <div class="control-label">
-            <span>تحسين المنحنيات (Optolerance):</span>
-            <span class="control-val" id="valOpt">0.20</span>
+        <!-- Optolerance -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted-foreground">تحسين المسارات (Optolerance):</span>
+            <span id="valOpt" class="font-mono font-semibold px-1.5 py-0.5 rounded bg-secondary text-foreground text-[11px]">0.20</span>
           </div>
           <input type="range" id="rngOpt" min="0.05" max="0.8" step="0.05" value="0.20">
         </div>
-      </section>
+      </div>
 
-      <!-- Convert Button -->
-      <button class="btn-convert" id="btnTrace">
-        <span>⚡ إعادة توليد الفيكتور (Vectorize)</span>
-      </button>
+      <!-- Action Buttons -->
+      <div class="space-y-2 pt-1">
+        <button id="btnTrace" class="w-full h-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs tracking-wide transition-all shadow-sm active:scale-[0.99] flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span>إعادة توليد الفيكتور (Vectorize)</span>
+        </button>
 
-      <label class="checkbox-label" style="justify-content: center;">
-        <input type="checkbox" id="chkAuto" checked>
-        <span>تحديث تلقائي فوري عند تحريك المؤشرات</span>
-      </label>
+        <label class="flex items-center justify-center gap-2 text-xs text-muted-foreground cursor-pointer select-none py-1">
+          <input type="checkbox" id="chkAuto" checked class="rounded border-border accent-foreground w-4 h-4">
+          <span>تحديث تلقائي فوري عند تحريك المؤشرات</span>
+        </label>
+      </div>
 
     </aside>
 
     <!-- Right Workspace Area -->
-    <div class="workspace-panel">
+    <div class="flex flex-col gap-4">
 
-      <div class="workspace-header">
-        <div class="view-tabs">
-          <button class="tab-btn active" data-view="svg">متجه SVG النهائي</button>
-          <button class="tab-btn" data-view="split">مقارنة متزامنة (جنباً إلى جنب)</button>
-          <button class="tab-btn" data-view="preprocessed">معاينة معالجة mkbitmap</button>
-          <button class="tab-btn" data-view="original">الرسمة الأصلية</button>
+      <!-- View Tabs & Actions Header (Linear style) -->
+      <div class="flex items-center justify-between flex-wrap gap-3 border border-border rounded-xl p-2.5 bg-card shadow-sm">
+        
+        <!-- Segmented View Tabs -->
+        <div class="bg-secondary p-1 rounded-lg flex items-center gap-1 text-xs font-medium border border-border/50">
+          <button class="tab-btn py-1.5 px-3 rounded-md transition-all active bg-background text-foreground shadow-sm" data-view="svg">
+            متجه SVG النهائي
+          </button>
+          <button class="tab-btn py-1.5 px-3 rounded-md transition-all text-muted-foreground hover:text-foreground" data-view="split">
+            مقارنة جنباً إلى جنب
+          </button>
+          <button class="tab-btn py-1.5 px-3 rounded-md transition-all text-muted-foreground hover:text-foreground" data-view="preprocessed">
+            معاينة الحبر (mkbitmap)
+          </button>
+          <button class="tab-btn py-1.5 px-3 rounded-md transition-all text-muted-foreground hover:text-foreground" data-view="original">
+            الرسمة الأصلية
+          </button>
         </div>
 
-        <div class="workspace-actions">
-          <button class="action-btn" id="btnCopySvg">📋 نسخ كود SVG</button>
-          <button class="action-btn" id="btnDownloadBmp">🖼️ تحميل Bitmap</button>
-          <button class="action-btn primary" id="btnDownloadSvg">⬇️ تحميل ملف SVG</button>
+        <!-- Actions -->
+        <div class="flex items-center gap-2">
+          <button id="btnCopySvg" class="h-8 px-3 rounded-md border border-border bg-secondary hover:bg-accent text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
+            <span>نسخ SVG</span>
+          </button>
+
+          <button id="btnDownloadBmp" class="h-8 px-3 rounded-md border border-border bg-secondary hover:bg-accent text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+            </svg>
+            <span>تحميل Bitmap</span>
+          </button>
+
+          <button id="btnDownloadSvg" class="h-8 px-3.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>تحميل SVG</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Main Canvas Viewport Area -->
+      <div id="viewport" class="relative flex-1 min-h-[540px] rounded-xl border border-border viewport-grid flex items-center justify-center p-6 overflow-hidden bg-card/40 backdrop-blur-sm shadow-sm">
+        
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="absolute inset-0 bg-background/80 backdrop-blur-md flex flex-col items-center justify-center gap-3 z-30 opacity-0 pointer-events-none transition-opacity duration-200">
+          <div class="loading-spinner"></div>
+          <p id="loadingText" class="text-xs font-mono text-muted-foreground">جاري استخلاص خطوط الحبر وتوليد منحنيات SVG...</p>
+        </div>
+
+        <!-- Render Target -->
+        <div id="viewportContent" class="w-full h-full flex items-center justify-center"></div>
+      </div>
+
+      <!-- Technical Insight Callout (shadcn alert style) -->
+      <div class="border border-border/70 rounded-xl p-3 bg-secondary/30 flex items-start gap-3 text-xs">
+        <div class="w-5 h-5 rounded-md bg-secondary flex items-center justify-center shrink-0 text-muted-foreground mt-0.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        </div>
+        <div class="text-muted-foreground leading-relaxed">
+          <strong class="text-foreground font-semibold">سر جودة النتيجة:</strong>
+          يقوم فلتر <code class="px-1.5 py-0.5 rounded bg-secondary font-mono text-foreground text-[11px]">-f 2</code> بطرح المساحات اللونية العريضة وعزل خطوط الحبر الرفيعة، بينما يضاعف <code class="px-1.5 py-0.5 rounded bg-secondary font-mono text-foreground text-[11px]">-s 2</code> دقة الرسمة بالاستيفاء قبل التحويل لإنتاج منحنيات فيكتور فائقة النعومة.
         </div>
       </div>
 
-      <!-- Viewport Display -->
-      <div class="viewport-container" id="viewport">
-        <div class="loading-overlay" id="loadingOverlay">
-          <div class="spinner"></div>
-          <p id="loadingText" style="font-size: 0.9rem; font-weight: 600;">جاري استخلاص خطوط الحبر وتوليد المنحنيات الرياضية...</p>
+      <!-- Statistics Bar (shadcn / Linear footer) -->
+      <div class="flex items-center justify-between flex-wrap gap-4 px-4 py-2.5 border border-border rounded-xl bg-card text-xs text-muted-foreground font-mono shadow-sm">
+        <div class="flex items-center gap-2">
+          <span>DIMENSIONS:</span>
+          <span id="statDim" class="text-foreground font-semibold">-</span>
         </div>
-
-        <div class="viewport-content" id="viewportContent"></div>
-      </div>
-
-      <!-- Quality Explanation Banner -->
-      <div class="quality-banner">
-        <span class="banner-icon">💡</span>
-        <div class="banner-text">
-          <strong>كيف تم تحقيق هذه النتيجة؟</strong>
-          يقوم فلتر <code class="tag">-f 2</code> بطرح ألوان الخلفية والمساحات اللونية الواسعة والإبقاء فقط على خطوط الحبر الدقيقة، بينما يُضاعف <code class="tag">-s 2</code> دقة الصورة قبل استخراج المنحنيات لتحصل على أقصى نعومة ممكنة.
+        <div class="flex items-center gap-2">
+          <span>FILE SIZE:</span>
+          <span id="statSize" class="text-foreground font-semibold">-</span>
         </div>
-      </div>
-
-      <!-- Statistics Bar -->
-      <div class="stats-bar">
-        <div class="stat-item">الأبعاد: <span class="stat-val" id="statDim">-</span></div>
-        <div class="stat-item">حجم ملف SVG: <span class="stat-val" id="statSize">-</span></div>
-        <div class="stat-item">عدد المسارات (Paths): <span class="stat-val" id="statPaths">-</span></div>
-        <div class="stat-item">زمن المعالجة الفوري: <span class="stat-val" id="statTime">-</span></div>
+        <div class="flex items-center gap-2">
+          <span>PATHS:</span>
+          <span id="statPaths" class="text-foreground font-semibold">-</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>TIME:</span>
+          <span id="statTime" class="text-foreground font-semibold">-</span>
+        </div>
       </div>
 
     </div>
+
   </main>
 
-  <div class="toast" id="toast">تم النسخ بنجاح!</div>
+  <!-- Modern shadcn Toast -->
+  <div id="toast" class="fixed bottom-5 left-5 z-50 border border-border bg-card text-foreground px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold translate-y-16 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2">
+    <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span id="toastMsg">تم النسخ بنجاح!</span>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

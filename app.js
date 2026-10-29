@@ -13,7 +13,7 @@ const state = {
   fileName: 'comic-vector',
 };
 
-// Gallery sample definitions & presets
+// Built-in Gallery Definitions & Golden Values
 const SAMPLES = {
   comic_video: {
     src: 'samples/comic_video.png',
@@ -61,12 +61,14 @@ const SAMPLES = {
   }
 };
 
-// DOM Elements
+// DOM References
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const viewportContent = document.getElementById('viewportContent');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const toast = document.getElementById('toast');
+const toastMsg = document.getElementById('toastMsg');
+const btnThemeToggle = document.getElementById('btnThemeToggle');
 
 // Mode toggles
 const btnModeMono = document.getElementById('btnModeMono');
@@ -128,12 +130,18 @@ async function bootstrap() {
   }
 
   setupEventListeners();
-  // Auto load the exact comic sample from the video!
+  // Auto-load the exact video comic strip!
   loadSample('comic_video');
 }
 
 // --- Setup Event Listeners ---
 function setupEventListeners() {
+  // Theme toggle
+  btnThemeToggle?.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.theme = isDark ? 'dark' : 'light';
+  });
+
   // Drop & Upload
   dropZone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
@@ -144,12 +152,14 @@ function setupEventListeners() {
 
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    dropZone.classList.add('dragover');
+    dropZone.classList.add('border-foreground/80', 'bg-accent/40');
   });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-foreground/80', 'bg-accent/40');
+  });
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    dropZone.classList.remove('dragover');
+    dropZone.classList.remove('border-foreground/80', 'bg-accent/40');
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       loadFile(e.dataTransfer.files[0]);
     }
@@ -183,8 +193,12 @@ function setupEventListeners() {
   // Tabs
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      tabButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      tabButtons.forEach(b => {
+        b.classList.remove('active', 'bg-background', 'text-foreground', 'shadow-sm');
+        b.classList.add('text-muted-foreground', 'hover:text-foreground');
+      });
+      btn.classList.add('active', 'bg-background', 'text-foreground', 'shadow-sm');
+      btn.classList.remove('text-muted-foreground', 'hover:text-foreground');
       state.currentView = btn.dataset.view;
       renderCurrentView();
     });
@@ -215,16 +229,17 @@ function loadSample(key) {
   const sample = SAMPLES[key];
   if (!sample) return;
 
-  // Highlight card
+  // Highlight card with shadcn active style
   galleryCards.forEach(c => {
-    if (c.dataset.sample === key) c.classList.add('active');
-    else c.classList.remove('active');
+    if (c.dataset.sample === key) {
+      c.classList.add('active', 'border-primary', 'ring-1', 'ring-primary', 'bg-secondary/70');
+    } else {
+      c.classList.remove('active', 'border-primary', 'ring-1', 'ring-primary', 'bg-secondary/70');
+    }
   });
 
-  // Apply parameters
   applyPresetValues(sample);
 
-  // Load image
   state.fileName = sample.name;
   const img = new Image();
   img.onload = () => {
@@ -263,8 +278,10 @@ function applyPresetValues(cfg, activeBtn = null) {
 
   // Update preset button active state
   if (activeBtn) {
-    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    activeBtn.classList.add('active');
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      b.classList.remove('active', 'border-primary', 'bg-accent/70');
+    });
+    activeBtn.classList.add('active', 'border-primary', 'bg-accent/70');
   }
 
   if (cfg.mode) {
@@ -278,17 +295,23 @@ function applyPresetValues(cfg, activeBtn = null) {
 function setMode(mode) {
   state.mode = mode;
   if (mode === 'color') {
-    btnModeColor.classList.add('active');
-    btnModeMono.classList.remove('active');
-    grpColorLevels.style.display = 'flex';
+    btnModeColor.classList.add('active', 'bg-background', 'text-foreground', 'shadow-sm');
+    btnModeColor.classList.remove('text-muted-foreground');
+    btnModeMono.classList.remove('active', 'bg-background', 'text-foreground', 'shadow-sm');
+    btnModeMono.classList.add('text-muted-foreground');
+
+    grpColorLevels.style.display = 'block';
     grpThreshold.style.display = 'none';
     grpFilter.style.display = 'none';
   } else {
-    btnModeMono.classList.add('active');
-    btnModeColor.classList.remove('active');
+    btnModeMono.classList.add('active', 'bg-background', 'text-foreground', 'shadow-sm');
+    btnModeMono.classList.remove('text-muted-foreground');
+    btnModeColor.classList.remove('active', 'bg-background', 'text-foreground', 'shadow-sm');
+    btnModeColor.classList.add('text-muted-foreground');
+
     grpColorLevels.style.display = 'none';
-    grpThreshold.style.display = 'flex';
-    grpFilter.style.display = 'flex';
+    grpThreshold.style.display = 'block';
+    grpFilter.style.display = 'block';
   }
   if (chkAuto.checked) debouncedRun();
 }
@@ -296,7 +319,7 @@ function setMode(mode) {
 // --- File Handling ---
 function loadFile(file) {
   state.fileName = file.name.replace(/\.[^/.]+$/, "");
-  galleryCards.forEach(c => c.classList.remove('active'));
+  galleryCards.forEach(c => c.classList.remove('active', 'border-primary', 'ring-1', 'ring-primary', 'bg-secondary/70'));
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -323,7 +346,8 @@ function debouncedRun() {
 async function runPipeline() {
   if (!state.originalImage || state.isProcessing) return;
   state.isProcessing = true;
-  loadingOverlay.classList.add('active');
+  loadingOverlay.classList.remove('opacity-0', 'pointer-events-none');
+  loadingOverlay.classList.add('opacity-100');
 
   const startTime = performance.now();
 
@@ -372,7 +396,8 @@ async function runPipeline() {
     showToast('حدث خطأ أثناء المعالجة: ' + err.message);
   } finally {
     state.isProcessing = false;
-    loadingOverlay.classList.remove('active');
+    loadingOverlay.classList.remove('opacity-100');
+    loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
   }
 }
 
@@ -400,7 +425,7 @@ function renderCurrentView() {
 
     const cardBmp = document.createElement('div');
     cardBmp.className = 'split-card';
-    cardBmp.innerHTML = '<span class="split-label">معالجة mkbitmap (الحبر النقي)</span>';
+    cardBmp.innerHTML = '<span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">معالجة mkbitmap (الحبر النقي)</span>';
     const canvas = document.createElement('canvas');
     canvas.width = state.preprocessedData.width;
     canvas.height = state.preprocessedData.height;
@@ -409,7 +434,7 @@ function renderCurrentView() {
 
     const cardSvg = document.createElement('div');
     cardSvg.className = 'split-card';
-    cardSvg.innerHTML = '<span class="split-label">متجه Potrace SVG (المنحنيات الرياضية)</span>' + state.svgOutput;
+    cardSvg.innerHTML = '<span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">متجه Potrace SVG (المنحنيات الرياضية)</span>' + state.svgOutput;
 
     container.appendChild(cardBmp);
     container.appendChild(cardSvg);
@@ -431,7 +456,7 @@ function updateStats(durationMs, svg, width, height) {
 function copySvgCode() {
   if (!state.svgOutput) return;
   navigator.clipboard.writeText(state.svgOutput).then(() => {
-    showToast('تم نسخ كود SVG إلى الحافظة!');
+    showToast('تم نسخ كود SVG بنجاح إلى الحافظة!');
   });
 }
 
@@ -444,7 +469,7 @@ function downloadSvgFile() {
   a.download = `${state.fileName || 'vector'}.svg`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('تم تحميل ملف SVG بنجاح!');
+  showToast('تم بدء تحميل ملف SVG!');
 }
 
 function downloadBmpFile() {
@@ -457,13 +482,17 @@ function downloadBmpFile() {
   a.href = canvas.toDataURL('image/png');
   a.download = `${state.fileName || 'bitmap'}-mkbitmap.png`;
   a.click();
-  showToast('تم تحميل صورة البتماب المعالجة!');
+  showToast('تم بدء تحميل صورة Bitmap!');
 }
 
 function showToast(msg) {
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2500);
+  if (toastMsg) toastMsg.textContent = msg;
+  toast.classList.remove('translate-y-16', 'opacity-0');
+  toast.classList.add('translate-y-0', 'opacity-100');
+  setTimeout(() => {
+    toast.classList.remove('translate-y-0', 'opacity-100');
+    toast.classList.add('translate-y-16', 'opacity-0');
+  }, 2400);
 }
 
 // Start application
